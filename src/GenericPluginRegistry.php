@@ -16,6 +16,7 @@ namespace Modular\Plugin;
 use Modular\Plugin\Contract\Plugin;
 use Modular\Plugin\Contract\PluginRegistry;
 use Modular\Plugin\Exception\InvalidPluginImplementationException;
+use Modular\Plugin\Exception\PluginAlreadyRegisteredException;
 use Modular\Plugin\Exception\PluginNotRegisteredException;
 use Psr\Container\ContainerInterface;
 
@@ -40,6 +41,10 @@ class GenericPluginRegistry implements PluginRegistry
         // @phpstan-ignore-next-line
         if (is_subclass_of($pluginClass, Plugin::class) === false) {
             throw new InvalidPluginImplementationException(static::class, $pluginClass, 'Does not implement Plugin interface');
+        }
+
+        if (isset($this->registeredPlugins[$pluginClass])) {
+            throw new PluginAlreadyRegisteredException(static::class, $pluginClass);
         }
 
         $this->registeredPlugins[$pluginClass] = $container;

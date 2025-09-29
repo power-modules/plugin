@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Modular\Plugin\Test;
 
+use Modular\Plugin\Exception\PluginAlreadyRegisteredException;
 use Modular\Plugin\Exception\PluginNotRegisteredException;
 use Modular\Plugin\Test\PowerModule\Setup\Stub\Layer2\ExtractPluginRegistry;
 use Modular\Plugin\Test\PowerModule\Setup\Stub\Layer3\CsvExtractPlugin;
@@ -106,10 +107,8 @@ class AbstractPluginRegistryTest extends TestCase
         $container2 = $this->createMock(ContainerInterface::class);
 
         $this->pluginRegistry->registerPlugin(CsvExtractPlugin::class, $container1);
+        $this->expectException(PluginAlreadyRegisteredException::class);
+        $this->expectExceptionMessage('already registered');
         $this->pluginRegistry->registerPlugin(CsvExtractPlugin::class, $container2);
-
-        self::assertCount(1, $this->pluginRegistry->getRegisteredPlugins());
-        self::assertContains(CsvExtractPlugin::class, $this->pluginRegistry->getRegisteredPlugins());
-        self::assertTrue($this->pluginRegistry->hasPlugin(CsvExtractPlugin::class));
     }
 }

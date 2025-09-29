@@ -6,6 +6,7 @@ namespace Modular\Plugin\Test;
 
 use Modular\Plugin\Contract\Plugin;
 use Modular\Plugin\Exception\InvalidPluginImplementationException;
+use Modular\Plugin\Exception\PluginAlreadyRegisteredException;
 use Modular\Plugin\GenericPluginRegistry;
 use PHPUnit\Framework\TestCase;
 use Psr\Container\ContainerInterface;
@@ -56,5 +57,29 @@ class GenericPluginRegistryValidationTest extends TestCase
 
         self::assertCount(1, $all);
         self::assertSame($pluginClass, $all[0]);
+    }
+
+    public function testRegisterPluginThrowsWhenDuplicate(): void
+    {
+        $registry = new GenericPluginRegistry();
+
+        $pluginClass = new class () implements Plugin {
+            public static function getPluginMetadata(): \Modular\Plugin\PluginMetadata
+            {
+                return new \Modular\Plugin\PluginMetadata('Dup', '1.0.0');
+            }
+        };
+        $className = $pluginClass::class;
+
+        $c1 = $this->createMock(ContainerInterface::class);
+        $c1->method('get')->with($className)->willReturn($pluginClass);
+
+        $registry->registerPlugin($className, $c1);
+
+        $this->expectException(PluginAlreadyRegisteredException::class);
+        $this->expectExceptionMessage('already registered');
+
+        $c2 = $this->createMock(ContainerInterface::class);
+        $registry->registerPlugin($className, $c2);
     }
 }
