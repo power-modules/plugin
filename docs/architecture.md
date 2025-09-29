@@ -75,6 +75,7 @@ This describes only the order and intent of the default setup bundle, complement
 
 - PluginRegistryNotFoundException: Target registry is missing in both containers
 - PluginNotRegisteredException: Attempting to create an unregistered plugin
+- PluginAlreadyRegisteredException: Attempting to register the same plugin class twice in the same registry
 - RuntimeException: Resolved instance does not implement Plugin
 - InvalidPluginImplementationException: Thrown during registration when the provided class does not exist or does not implement the Plugin contract
 

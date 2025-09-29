@@ -42,6 +42,20 @@ interface PluginRegistry
      */
     public function resolveAll(): array;
 
+    /**
+     * Return metadata for a registered plugin without instantiating it.
+     *
+     * @param class-string<TPlugin> $pluginClass
+     */
+    public function getPluginMetadataFor(string $pluginClass): PluginMetadata;
+
+    /**
+     * List metadata for all registered plugins.
+     *
+     * @return array<class-string<TPlugin>, PluginMetadata>
+     */
+    public function listPluginMetadata(): array;
+
     // Note: Generics are for IDE/PHPStan only; the PHP return type remains Plugin at runtime.
     // Prefer assigning to the specific interface via PHPDoc when consuming.
 }
@@ -113,6 +127,11 @@ These integrate with the framework’s setup phases.
 - Resolves the target registry in the ROOT container only; throws if not found
 - Registers plugin classes with the registry, storing the module container for DI
 
+### PluginRegistryModuleConvenienceSetup (Post)
+
+- Copies the default `PluginRegistry` definition from ROOT into each module container if missing
+- Purpose: allow modules to inject `PluginRegistry` without implementing `ImportsComponents`
+
 Providing registries
 - Default: `GenericPluginRegistrySetup` binds a shared default registry in ROOT under `PluginRegistry::class`.
 - Custom: Export a custom registry from a module (so it appears in ROOT during Pre) or bind it programmatically to the root container before Post.
@@ -122,6 +141,7 @@ Providing registries
 - PluginRegistryNotFoundException — Target registry missing in ROOT container (registries are resolved from ROOT only)
 - PluginNotRegisteredException — Attempt to create an unregistered plugin
 - InvalidPluginImplementationException — Registration-time validation failed (class missing or not implementing Plugin)
+- PluginAlreadyRegisteredException — Duplicate registration of the same plugin class in the same registry
 - RuntimeException — Resolved instance does not implement `Plugin`
 
 ## Performance & Runtime Notes

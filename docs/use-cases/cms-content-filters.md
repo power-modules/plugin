@@ -5,16 +5,23 @@ A classic CMS pipeline: convert Markdown to HTML, sanitize unsafe tags, and link
 ## Goal
 
 - Define a `ContentFilter` contract
+- Use autoprovisioned `GenericPluginRegistry`
 - Implement `Markdown`, `Sanitizer`, and `Linkifier` plugins
-- Provide them from a module via `ProvidesPlugins`
-- Orchestrate them in order using `PluginRegistry`
+- Export the registry and orchestrator from a core module; adapters live in separate modules (3rd‑party friendly)
+- Provide each filter from its own module via `ProvidesPlugins` (3rd‑party friendly)
+- Orchestrate them in order using the default `PluginRegistry`
 
-## Interfaces & Plugins
+## Modules
 
 ```php
 declare(strict_types=1);
 
+use Modular\Framework\PowerModule\Contract\PowerModule;
+use Modular\Framework\PowerModule\Contract\ExportsComponents;
+use Modular\Framework\Container\ConfigurableContainerInterface;
 use Modular\Plugin\Contract\Plugin;
+use Modular\Plugin\Contract\ProvidesPlugins;
+use Modular\Plugin\Contract\PluginRegistry;
 use Modular\Plugin\PluginMetadata;
 
 interface ContentFilter extends Plugin
@@ -22,6 +29,42 @@ interface ContentFilter extends Plugin
     public function filter(string $htmlOrMarkdown): string;
 }
 
+// Orchestrator that applies a sequence of content filters
+final class ContentFilterPipeline
+{
+    /** @param PluginRegistry<ContentFilter> $registry */
+    public function __construct(private PluginRegistry $registry) {}
+
+    /** @param array<class-string<ContentFilter>> $filters */
+    public function run(string $input, array $filters): string
+    {
+        $result = $input;
+        foreach ($filters as $filterClass) {
+            $filter = $this->registry->makePlugin($filterClass);
+            $result = $filter->filter($result);
+        }
+        return $result;
+    }
+}
+
+// 1) Core module: exports the orchestrator; does not declare plugins
+final class CmsFilterCoreModule implements PowerModule, ExportsComponents
+{
+    public static function exports(): array
+    {
+        return [ContentFilterPipeline::class];
+    }
+
+    public function register(ConfigurableContainerInterface $c): void
+    {
+        // Export orchestrator with the default PluginRegistry injected
+        $c->set(ContentFilterPipeline::class, ContentFilterPipeline::class)
+            ->addArguments([PluginRegistry::class]);
+    }
+}
+
+// 2) Markdown plugin module: declares and registers only the Markdown filter
+/** @implements ProvidesPlugins<ContentFilter> */
 final class MarkdownFilter implements ContentFilter
 {
     public static function getPluginMetadata(): PluginMetadata
@@ -40,6 +83,23 @@ final class MarkdownFilter implements ContentFilter
     }
 }
 
+final class MarkdownFilterModule implements PowerModule, ProvidesPlugins
+{
+    public static function getPlugins(): array
+    {
+        return [
+            PluginRegistry::class => [MarkdownFilter::class],
+        ];
+    }
+
+    public function register(ConfigurableContainerInterface $c): void
+    {
+        $c->set(MarkdownFilter::class, MarkdownFilter::class);
+    }
+}
+
+// 3) Sanitizer plugin module: declares and registers only the Sanitizer filter
+/** @implements ProvidesPlugins<ContentFilter> */
 final class SanitizerFilter implements ContentFilter
 {
     public static function getPluginMetadata(): PluginMetadata
@@ -55,6 +115,23 @@ final class SanitizerFilter implements ContentFilter
     }
 }
 
+final class SanitizerFilterModule implements PowerModule, ProvidesPlugins
+{
+    public static function getPlugins(): array
+    {
+        return [
+            PluginRegistry::class => [SanitizerFilter::class],
+        ];
+    }
+
+    public function register(ConfigurableContainerInterface $c): void
+    {
+        $c->set(SanitizerFilter::class, SanitizerFilter::class);
+    }
+}
+
+// 4) Linkifier plugin module: declares and registers only the Linkifier filter
+/** @implements ProvidesPlugins<ContentFilter> */
 final class LinkifierFilter implements ContentFilter
 {
     public static function getPluginMetadata(): PluginMetadata
@@ -72,73 +149,19 @@ final class LinkifierFilter implements ContentFilter
         ) ?? $htmlOrMarkdown;
     }
 }
-```
 
-## Module
-
-```php
-declare(strict_types=1);
-
-use Modular\Framework\PowerModule\Contract\PowerModule;
-use Modular\Framework\PowerModule\Contract\ExportsComponents;
-use Modular\Framework\Container\ConfigurableContainerInterface;
-use Modular\Plugin\Contract\ProvidesPlugins;
-use Modular\Plugin\Contract\PluginRegistry;
-
-/** @implements ProvidesPlugins<ContentFilter> */
-final class CmsFilterModule implements PowerModule, ProvidesPlugins, ExportsComponents
+final class LinkifierFilterModule implements PowerModule, ProvidesPlugins
 {
-    public static function exports(): array
-    {
-        // Export the orchestrator so it can be resolved from the root container
-        return [ContentFilterPipeline::class];
-    }
-
     public static function getPlugins(): array
     {
         return [
-            PluginRegistry::class => [
-                MarkdownFilter::class,
-                SanitizerFilter::class,
-                LinkifierFilter::class,
-            ],
+            PluginRegistry::class => [LinkifierFilter::class],
         ];
     }
 
     public function register(ConfigurableContainerInterface $c): void
     {
-        $c->set(MarkdownFilter::class, MarkdownFilter::class);
-        $c->set(SanitizerFilter::class, SanitizerFilter::class);
         $c->set(LinkifierFilter::class, LinkifierFilter::class);
-
-        // Bind orchestrator and inject the default PluginRegistry
-        $c->set(ContentFilterPipeline::class, ContentFilterPipeline::class)
-            ->addArguments([PluginRegistry::class]);
-    }
-}
-```
-
-## Orchestrator
-
-```php
-declare(strict_types=1);
-
-use Modular\Plugin\Contract\PluginRegistry;
-
-final class ContentFilterPipeline
-{
-    /** @param PluginRegistry<ContentFilter> $registry */
-    public function __construct(private PluginRegistry $registry) {}
-
-    /** @param array<class-string<ContentFilter>> $filters */
-    public function run(string $input, array $filters): string
-    {
-        $result = $input;
-        foreach ($filters as $filterClass) {
-            $filter = $this->registry->makePlugin($filterClass);
-            $result = $filter->filter($result);
-        }
-        return $result;
     }
 }
 ```
@@ -150,15 +173,16 @@ declare(strict_types=1);
 
 use Modular\Framework\App\ModularAppBuilder;
 use Modular\Plugin\PowerModule\Setup\PluginRegistrySetup;
-use Modular\Plugin\Contract\PluginRegistry;
 
 $app = (new ModularAppBuilder(__DIR__))
     ->withPowerSetup(...PluginRegistrySetup::withDefaults())
-    ->withModules(CmsFilterModule::class)
+    ->withModules(
+        CmsFilterCoreModule::class, // provides the orchestrator
+        MarkdownFilterModule::class,
+        SanitizerFilterModule::class,
+        LinkifierFilterModule::class,
+    )
     ->build();
-
-/** @var PluginRegistry<ContentFilter> $registry */
-$registry = $app->get(PluginRegistry::class);
 
 $pipeline = $app->get(ContentFilterPipeline::class);
 
@@ -175,15 +199,9 @@ $output = $pipeline->run($input, [
 
 Note: When using `PluginRegistrySetup::withDefaults()`, the registry is also made injectable within modules via a convenience setup, so the orchestrator can depend on `PluginRegistry` without adding `ImportsComponents`.
 
-## Metadata-driven UI snippet
-
-Use metadata without instantiating plugins to populate a picker:
-
-```php
-foreach ($registry->listPluginMetadata() as $class => $meta) {
-    echo $meta->name . ' — ' . $meta->description . "\n";
-}
-```
+Additional Notes:
+- Third‑party filter modules (e.g., Markdown, Sanitizer, Linkifier) can live in separate repositories. They only depend on the shared `ContentFilter` contract and target the default `PluginRegistry` in `getPlugins()`.
+- Only the core module should export the orchestrator. Plugin modules must not attempt to rebind the default registry; they simply declare their plugin classes against it.
 
 ## Edge Cases
 

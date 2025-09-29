@@ -127,14 +127,6 @@ final class DiscountModule implements PowerModule, ProvidesPlugins, ExportsCompo
             ->addArguments([PluginRegistry::class]);
     }
 }
-```
-
-## Orchestrator
-
-```php
-declare(strict_types=1);
-
-use Modular\Plugin\Contract\PluginRegistry;
 
 final class DiscountEngine
 {
@@ -156,6 +148,10 @@ final class DiscountEngine
     }
 }
 ```
+
+## Orchestrator
+
+Defined above next to the module as `DiscountEngine`.
 
 ## App Wiring
 
