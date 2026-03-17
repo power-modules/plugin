@@ -7,7 +7,7 @@ A classic CMS pipeline: convert Markdown to HTML, sanitize unsafe tags, and link
 - Define a `ContentFilter` contract
 - Use autoprovisioned `GenericPluginRegistry`
 - Implement `Markdown`, `Sanitizer`, and `Linkifier` plugins
-- Export the registry and orchestrator from a core module; adapters live in separate modules (3rd‑party friendly)
+- Export the orchestrator from a core module; adapters live in separate modules (3rd‑party friendly)
 - Provide each filter from its own module via `ProvidesPlugins` (3rd‑party friendly)
 - Orchestrate them in order using the default `PluginRegistry`
 
@@ -211,4 +211,4 @@ Additional Notes:
 ## Acceptance Check
 
 - Given the input above, the pipeline returns safe, linkified HTML
-- `getRegisteredPlugins()` lists the three filters with readable names from metadata
+- `listPluginMetadata()` lists the three filters with readable names and descriptions

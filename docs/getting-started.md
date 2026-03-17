@@ -64,6 +64,8 @@ final class TextPluginModule implements PowerModule, ProvidesPlugins
 }
 ```
 
+`getPlugins()` declares which plugin classes should be registered into which registry. `register()` still has to bind those plugin classes in the module container so the registry can instantiate them later with full DI support.
+
 ## 4) Wire it in the app
 
 ```php

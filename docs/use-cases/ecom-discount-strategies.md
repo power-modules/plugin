@@ -202,4 +202,4 @@ foreach ($registry->listPluginMetadata() as $class => $meta) {
 ## Acceptance Check
 
 - Given a subtotal and selected strategies, the engine returns the expected final price
-- `getRegisteredPlugins()` lists available discounts with readable names
+- `listPluginMetadata()` lists available discounts with readable names

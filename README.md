@@ -25,17 +25,34 @@ composer require power-modules/plugin
 Define a plugin, provide it from a module, and the framework handles the rest.
 
 ```php
+use Modular\Framework\Container\ConfigurableContainerInterface;
+use Modular\Framework\PowerModule\Contract\PowerModule;
+use Modular\Plugin\Contract\Plugin;
+use Modular\Plugin\Contract\PluginRegistry;
+use Modular\Plugin\Contract\ProvidesPlugins;
+use Modular\Plugin\PluginMetadata;
+
 // 1. Define a plugin
-class MyPlugin implements Plugin {
-    // ...
+final class MyPlugin implements Plugin
+{
+    public static function getPluginMetadata(): PluginMetadata
+    {
+        return new PluginMetadata('My Plugin', '1.0.0', 'Example plugin');
+    }
 }
 
 // 2. Provide it from a module
-class MyModule implements PowerModule, ProvidesPlugins {
-    public static function getPlugins(): array {
+final class MyModule implements PowerModule, ProvidesPlugins
+{
+    public static function getPlugins(): array
+    {
         return [PluginRegistry::class => [MyPlugin::class]];
     }
-    // ...
+
+    public function register(ConfigurableContainerInterface $container): void
+    {
+        $container->set(MyPlugin::class, MyPlugin::class);
+    }
 }
 
 // 3. The application automatically discovers and registers it
@@ -45,6 +62,7 @@ $app = (new ModularAppBuilder(__DIR__))
     ->build();
 
 // 4. Use it
+/** @var PluginRegistry<MyPlugin> $registry */
 $registry = $app->get(PluginRegistry::class);
 $plugin = $registry->makePlugin(MyPlugin::class);
 ```
@@ -61,7 +79,7 @@ $plugin = $registry->makePlugin(MyPlugin::class);
 ## 🌟 Key Features
 
 - **Enhanced Developer Experience**: Generic annotations provide better IDE support and static analysis.
-- **Automatic Discovery**: PowerModuleSetup scans modules for plugin declarations.
+- **Automatic Discovery**: `PluginRegistrySetup` scans modules implementing `ProvidesPlugins` and registers declared plugin classes.
 - **Lazy Loading**: Plugins are instantiated only when requested through registries.
 - **Container Integration**: Full dependency injection support for plugins.
 - **Multiple Registries**: Support for specialized plugin types with custom registries.

@@ -73,7 +73,7 @@ This describes only the order and intent of the default setup bundle, complement
 
 ## Error Modes
 
-- PluginRegistryNotFoundException: Target registry is missing in both containers
+- PluginRegistryNotFoundException: Target registry is missing in the ROOT container
 - PluginNotRegisteredException: Attempting to create an unregistered plugin
 - PluginAlreadyRegisteredException: Attempting to register the same plugin class twice in the same registry
 - RuntimeException: Resolved instance does not implement Plugin
@@ -84,7 +84,7 @@ This describes only the order and intent of the default setup bundle, complement
 ```
 Module implements ProvidesPlugins
    → PluginRegistrySetup(Post) reads getPlugins()
-     → Resolve registry (module → root → fail)
+     → Resolve registry (root → fail)
        → registry.registerPlugin(PluginClass, ModuleContainer)
 
 At runtime:
